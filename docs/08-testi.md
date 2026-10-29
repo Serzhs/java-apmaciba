@@ -84,7 +84,7 @@ Clock clock = Clock.fixed(Instant.parse("2026-01-10T10:00:00Z"), ZoneOffset.UTC)
 ```bash
 mvn test
 ```
-Vai IntelliJ: labais klikšķis uz `src/test/java` → **Run 'All Tests'**.
+Vai VS Code: kreisajā pusē **Testing** ikona (kolba) → ▶ **Run All Tests**.
 
 ---
 

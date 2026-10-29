@@ -4,3 +4,16 @@ target/
 .vscode/
 .DS_Store
 *.log
+
+frontend/node_modules/
+frontend/dist/
+
+# mācību progresa pagaidu fails
+progress.json.tmp
+.progress-backups/
+
+# personīgais mācību progress (katram savs)
+progress.json
+
+# lokālie Claude iestatījumi
+.claude/

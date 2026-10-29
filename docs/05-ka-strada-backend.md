@@ -94,7 +94,7 @@ POST   /api/loans/1/return         → atdot
 GET    /api/loans?borrower=Jānis   → Jāņa aizņemtās grāmatas
 ```
 
-🧪 **Izmēģini pats:** palaid aplikāciju un atver [requests.http](../requests.http) (IntelliJ ļauj spiest ▶ pie katra pieprasījuma).
+🧪 **Izmēģini pats:** palaid aplikāciju un atver [requests.http](../requests.http) (VS Code ar "REST Client" paplašinājumu: spied "Send Request" virs katra pieprasījuma).
 
 ---
 

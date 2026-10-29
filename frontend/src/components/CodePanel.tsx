@@ -1,0 +1,124 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { files, isRunnable } from '../content'
+import { highlight, languageForPath } from '../highlight'
+
+type Props = {
+  tabs: string[]
+  active: string | null
+  closable?: (path: string) => boolean
+  onSelect: (path: string) => void
+  onClose?: (path: string) => void
+}
+
+const fileName = (p: string) => p.split('/').pop() ?? p
+
+export function FileBadge({ path }: { path: string }) {
+  const ext = path.split('.').pop() ?? ''
+  const label = { java: 'J', yml: 'Y', xml: 'M', http: 'H' }[ext] ?? '•'
+  return <span className={`file-badge ext-${ext}`}>{label}</span>
+}
+
+export function CodePanel({ tabs, active, closable, onSelect, onClose }: Props) {
+  const current = active && tabs.includes(active) ? active : tabs[0]
+  const content = current ? files[current] ?? '' : ''
+  const html = useMemo(() => (current ? highlight(content, languageForPath(current)) : ''), [current, content])
+  const lineCount = content.split('\n').length
+  const [copied, setCopied] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const tabsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, left: 0 })
+    // Ritinām TIKAI tabu joslu (scrollIntoView ritinātu arī visu lapu)
+    const bar = tabsRef.current
+    const tab = bar?.querySelector<HTMLElement>('.tab.active')
+    if (bar && tab) {
+      if (tab.offsetLeft < bar.scrollLeft) bar.scrollLeft = tab.offsetLeft
+      else if (tab.offsetLeft + tab.offsetWidth > bar.scrollLeft + bar.clientWidth)
+        bar.scrollLeft = tab.offsetLeft + tab.offsetWidth - bar.clientWidth
+    }
+  }, [current])
+
+  if (!current) {
+    return (
+      <div className="code-panel empty">
+        <p>Atver failu kokā kreisajā pusē</p>
+      </div>
+    )
+  }
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(content)
+    } catch {
+      return
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <div className="code-panel">
+      <div className="tabs" ref={tabsRef} role="tablist">
+        {tabs.map((t) => (
+          <div
+            key={t}
+            role="tab"
+            aria-selected={t === current}
+            className={`tab ${t === current ? 'active' : ''}`}
+            onClick={() => onSelect(t)}
+            onAuxClick={(e) => e.button === 1 && closable?.(t) && onClose?.(t)}
+            title={t}
+          >
+            <FileBadge path={t} />
+            <span className="tab-name">{fileName(t)}</span>
+            {closable?.(t) && (
+              <button
+                className="tab-close"
+                aria-label="Aizvērt"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose?.(t)
+                }}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="code-toolbar">
+        <span className="breadcrumb">
+          {current.split('/').map((part, i, arr) => (
+            <span key={i} className={i === arr.length - 1 ? 'crumb last' : 'crumb'}>
+              {part}
+            </span>
+          ))}
+        </span>
+        <span className="toolbar-actions">
+          {isRunnable(content) && (
+            <span className="run-badge" title="VS Code: atver šo failu un spied 'Run' virs main() metodes">
+              <svg width="9" height="9" viewBox="0 0 16 16" aria-hidden><path fill="currentColor" d="M4 2.5v11l9.5-5.5z" /></svg>
+              var palaist
+            </span>
+          )}
+          <button className="toolbar-btn" onClick={copy}>
+            {copied ? 'Nokopēts' : 'Kopēt'}
+          </button>
+        </span>
+      </div>
+
+      <div className="code-scroll" ref={scrollRef}>
+        <div className="code-grid">
+          <pre className="gutter" aria-hidden>
+            {Array.from({ length: lineCount }, (_, i) => i + 1).join('\n')}
+          </pre>
+          <pre className="code hljs">
+            <code dangerouslySetInnerHTML={{ __html: html }} />
+          </pre>
+        </div>
+      </div>
+    </div>
+  )
+}

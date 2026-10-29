@@ -12,7 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
  *   @EnableAutoConfiguration  — Boot automātiski konfigurē lietas pēc classpath (redz H2 -> izveido DataSource)
  *   @ComponentScan            — meklē @Component/@Service/@Repository/@RestController šajā pakotnē un apakšpakotnēs
  *
- * Palaid: IntelliJ -> zaļā bultiņa, vai terminālī `mvn spring-boot:run`
+ * Palaid: VS Code -> 'Run' virs main(), vai terminālī `mvn spring-boot:run`
  * Tad: http://localhost:8080/api/books
  */
 @SpringBootApplication

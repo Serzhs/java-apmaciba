@@ -15,7 +15,7 @@ import java.util.List;
  * Tas ļauj garantēt, ka objekts nekad nav nederīgā stāvoklī, un ļauj mainīt
  * iekšējo implementāciju, nesalaužot kodu, kas objektu izmanto."
  *
- * Palaid: IntelliJ -> zaļā bultiņa pie main().
+ * Palaid: VS Code -> 'Run' virs main() metodes (vai šīs mācību aplikācijas ▶ zīmīte).
  */
 public class Encapsulation {
 

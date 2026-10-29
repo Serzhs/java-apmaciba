@@ -1,0 +1,82 @@
+### =============================================================
+### API izmēģināšana. Vispirms palaid aplikāciju (BeMacibasApplication).
+### IntelliJ: spied ▶ pie katra pieprasījuma.
+### VS Code: uzinstalē "REST Client" paplašinājumu.
+### Tas pats, ko tu darītu ar fetch() no React!
+### =============================================================
+
+### 1. Visas grāmatas (ar lapošanu)
+GET http://localhost:8080/api/books
+
+### 2. Lapošana + kārtošana: 2. lapa, pa 2, jaunākās vispirms
+GET http://localhost:8080/api/books?page=1&size=2&sort=publishedYear,desc
+
+### 3. Filtrs pēc autora
+GET http://localhost:8080/api/books?author=blaum
+
+### 4. Viena grāmata
+GET http://localhost:8080/api/books/1
+
+### 5. Neeksistējoša grāmata → 404
+GET http://localhost:8080/api/books/999
+
+### 6. Autori
+GET http://localhost:8080/api/authors
+
+### 7. Izveidot autoru → 201
+POST http://localhost:8080/api/authors
+Content-Type: application/json
+
+{ "name": "Frank Herbert" }
+
+### 8. Izveidot grāmatu → 201 + Location header (authorId 5 = autors no 7. soļa)
+POST http://localhost:8080/api/books
+Content-Type: application/json
+
+{
+  "title": "Dune",
+  "isbn": "9780441013593",
+  "publishedYear": 1965,
+  "authorId": 5
+}
+
+### 9. Nederīgi dati → 400 ar kļūdām katram laukam
+POST http://localhost:8080/api/books
+Content-Type: application/json
+
+{ "title": "", "isbn": "abc", "publishedYear": 1200 }
+
+### 10. Atjaunot grāmatu (PUT)
+PUT http://localhost:8080/api/books/1
+Content-Type: application/json
+
+{
+  "title": "Zvejnieka dēls (2. izdevums)",
+  "isbn": "9789984000001",
+  "publishedYear": 1934,
+  "authorId": 1
+}
+
+### 11. Aizņemties grāmatu → 201 (skaties konsolē 📧 un 📱 paziņojumus!)
+POST http://localhost:8080/api/books/1/loans
+Content-Type: application/json
+
+{ "borrowerName": "Jānis" }
+
+### 12. Aizņemties to pašu vēlreiz → 409 Conflict
+POST http://localhost:8080/api/books/1/loans
+Content-Type: application/json
+
+{ "borrowerName": "Anna" }
+
+### 13. Jāņa aizņemtās grāmatas
+GET http://localhost:8080/api/loans?borrower=Jānis
+
+### 14. Atdot grāmatu
+POST http://localhost:8080/api/loans/1/return
+
+### 15. Dzēst grāmatu, kurai nav vēstures → 204
+DELETE http://localhost:8080/api/books/6
+
+### 16. Health check (to lieto load balanceri un Kubernetes)
+GET http://localhost:8080/actuator/health

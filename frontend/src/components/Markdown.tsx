@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { classifyLink } from '../content'
@@ -20,11 +20,35 @@ function hastText(node: any): string {
 }
 
 function CodeBlock({ code, lang }: { code: string; lang?: string }) {
+  const [copied, setCopied] = useState(false)
+  const preRef = useRef<HTMLPreElement>(null)
+  const text = code.replace(/\n$/, '')
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Ja pārlūks neļauj — iezīmējam tekstu, lai var nokopēt ar ⌘C
+      const codeEl = preRef.current?.querySelector('code')
+      if (codeEl) window.getSelection()?.selectAllChildren(codeEl)
+      return
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
   return (
-    <pre className="md-code hljs">
-      {lang && <span className="md-code-lang">{lang}</span>}
-      <code dangerouslySetInnerHTML={{ __html: highlight(code.replace(/\n$/, ''), lang) }} />
-    </pre>
+    <div className="md-code-wrap">
+      <div className="md-code-bar">
+        <span className="md-code-lang">{lang ?? 'kods'}</span>
+        <button className="md-copy" onClick={copy}>
+          {copied ? 'Nokopēts' : 'Kopēt'}
+        </button>
+      </div>
+      <pre className="md-code hljs" ref={preRef}>
+        <code dangerouslySetInnerHTML={{ __html: highlight(text, lang) }} />
+      </pre>
+    </div>
   )
 }
 

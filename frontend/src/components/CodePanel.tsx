@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { files, isRunnable } from '../content'
 import { highlight, languageForPath } from '../highlight'
+import { computeFoldRanges, splitHighlightedLines } from '../folding'
 
 type Props = {
   tabs: string[]
@@ -21,8 +22,15 @@ export function FileBadge({ path }: { path: string }) {
 export function CodePanel({ tabs, active, closable, onSelect, onClose }: Props) {
   const current = active && tabs.includes(active) ? active : tabs[0]
   const content = current ? files[current] ?? '' : ''
-  const html = useMemo(() => (current ? highlight(content, languageForPath(current)) : ''), [current, content])
-  const lineCount = content.split('\n').length
+  const htmlLines = useMemo(
+    () => (current ? splitHighlightedLines(highlight(content, languageForPath(current))) : []),
+    [current, content],
+  )
+  const rawLines = useMemo(() => content.split('\n'), [content])
+  const foldRanges = useMemo(() => computeFoldRanges(content), [content])
+  // Sakļautās rindas katram failam atsevišķi (pārslēdzot tabus, atceras)
+  const [foldedByFile, setFoldedByFile] = useState<Record<string, number[]>>({})
+  const folded = new Set(current ? foldedByFile[current] ?? [] : [])
   const [copied, setCopied] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const tabsRef = useRef<HTMLDivElement>(null)
@@ -45,6 +53,29 @@ export function CodePanel({ tabs, active, closable, onSelect, onClose }: Props) 
         <p>Atver failu kokā kreisajā pusē</p>
       </div>
     )
+  }
+
+  const setFolded = (next: Set<number>) => setFoldedByFile((prev) => ({ ...prev, [current]: [...next] }))
+  const toggleFold = (line: number) => {
+    const next = new Set(folded)
+    if (next.has(line)) next.delete(line)
+    else next.add(line)
+    setFolded(next)
+  }
+  // "Sakļaut visu": visas iekšējās daļas (atstāj redzamu tikai faila augšējo līmeni)
+  const foldAll = () => setFolded(new Set([...foldRanges.keys()].filter((l) => /^\s/.test(rawLines[l]))))
+  const unfoldAll = () => setFolded(new Set())
+
+  // Kuras rindas rādīt: ja rinda ir sakļauta, izlaižam tās ķermeni
+  const visible: { index: number; foldedTo?: number }[] = []
+  for (let i = 0; i < htmlLines.length; i++) {
+    const end = foldRanges.get(i)
+    if (end !== undefined && folded.has(i)) {
+      visible.push({ index: i, foldedTo: end })
+      i = end
+    } else {
+      visible.push({ index: i })
+    }
   }
 
   const copy = async () => {
@@ -103,6 +134,18 @@ export function CodePanel({ tabs, active, closable, onSelect, onClose }: Props) 
               var palaist
             </span>
           )}
+          {foldRanges.size > 0 && (
+            <>
+              <button className="toolbar-btn" onClick={foldAll} title="Sakļaut visas metodes un blokus">
+                Sakļaut visu
+              </button>
+              {folded.size > 0 && (
+                <button className="toolbar-btn" onClick={unfoldAll} title="Izvērst visu">
+                  Izvērst visu
+                </button>
+              )}
+            </>
+          )}
           <button className="toolbar-btn" onClick={copy}>
             {copied ? 'Nokopēts' : 'Kopēt'}
           </button>
@@ -110,13 +153,44 @@ export function CodePanel({ tabs, active, closable, onSelect, onClose }: Props) 
       </div>
 
       <div className="code-scroll" ref={scrollRef}>
-        <div className="code-grid">
-          <pre className="gutter" aria-hidden>
-            {Array.from({ length: lineCount }, (_, i) => i + 1).join('\n')}
-          </pre>
-          <pre className="code hljs">
-            <code dangerouslySetInnerHTML={{ __html: html }} />
-          </pre>
+        <div className="code-lines hljs" role="presentation">
+          {visible.map(({ index, foldedTo }) => {
+            const canFold = foldRanges.has(index)
+            const closer = foldedTo !== undefined ? rawLines[foldedTo].trim() : ''
+            const showCloser = foldedTo !== undefined && /^[}\])]|^\*\/|^<\//.test(closer)
+            return (
+              <div key={index} className={`code-line ${foldedTo !== undefined ? 'is-folded' : ''}`}>
+                <span className="ln" aria-hidden>
+                  {index + 1}
+                </span>
+                <span className="fold-slot">
+                  {canFold && (
+                    <button
+                      className="fold-btn"
+                      onClick={() => toggleFold(index)}
+                      aria-label={foldedTo !== undefined ? 'Izvērst' : 'Sakļaut'}
+                      title={foldedTo !== undefined ? 'Izvērst' : 'Sakļaut'}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
+                        <path d="M2.5 3.5 5 6l2.5-2.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
+                </span>
+                <span className="lc">
+                  <span dangerouslySetInnerHTML={{ __html: htmlLines[index] || ' ' }} />
+                  {foldedTo !== undefined && (
+                    <>
+                      <button className="fold-pill" onClick={() => toggleFold(index)} title={`Izvērst (${foldedTo - index} rindas)`}>
+                        ⋯ {foldedTo - index} rindas
+                      </button>
+                      {showCloser && <span className="fold-closer">{closer}</span>}
+                    </>
+                  )}
+                </span>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

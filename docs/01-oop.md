@@ -98,17 +98,42 @@ class Dog extends Animal {
 Kods, kas lieto `<Button>`, neinteresējas par detaļām.
 
 ```java
-interface Shape { double area(); }
+interface Shape {
+    double area();                      // līgums: katrai figūrai JĀPROT izrēķināt laukumu
+}
 
-class Circle implements Shape { public double area() { return 3.14 * r * r; } }
-class Square implements Shape { public double area() { return side * side; } }
+class Circle implements Shape {
+    double r;
+    Circle(double r) { this.r = r; }
+    public double area() { return 3.14 * r * r; }
+}
+
+class Square implements Shape {
+    double side;
+    Square(double side) { this.side = side; }
+    public double area() { return side * side; }
+}
+
+// Saraksts, kurā drīkst likt JEBKO, kas ir Shape — gan apļus, gan kvadrātus
+List<Shape> shapes = List.of(new Circle(2), new Square(3), new Circle(1));
 
 for (Shape s : shapes) {
-    s.area();   // Java PATI izvēlas pareizo area() — aplim vai kvadrātam
+    System.out.println(s.area());   // 12.56, 9.0, 3.14 — Java PATI izvēlas pareizo area()
 }
 ```
 
-Svarīgākais: ja rīt pievienosi `Triangle`, **cikls nav jāmaina**. ✨
+Ciklā mainīgā `s` tips ir `Shape`. Cikls nezina, vai tas ir aplis vai kvadrāts. Tas izsauc `s.area()`, un Java paskatās, kāds objekts tur **īstenībā** ir.
+
+Tas pats JavaScript valodā:
+```js
+const shapes = [
+  { area: () => 3.14 * 2 * 2 },   // aplis
+  { area: () => 3 * 3 },          // kvadrāts
+]
+for (const s of shapes) console.log(s.area())   // katrs izrēķina savā veidā
+```
+
+Svarīgākais: ja rīt pievienosi `Triangle implements Shape` un ieliksi to sarakstā, **cikls nav jāmaina**. Nav vajadzīgs `if (aplis) ... else if (trīsstūris) ...`. ✨
 
 Ir 2 veidi (to mēdz jautāt):
 - **Overriding** (pārrakstīšana) — apakšklase pārraksta vecāka metodi. Izlemj **programmas darbības laikā**.

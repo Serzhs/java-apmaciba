@@ -1,6 +1,8 @@
-import { useRef, useState, type ReactNode } from 'react'
-import ReactMarkdown from 'react-markdown'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
+import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+
+const REMARK_PLUGINS = [remarkGfm]
 import { classifyLink } from '../content'
 import { highlight } from '../highlight'
 
@@ -84,51 +86,60 @@ function tidy(md: string): string {
 }
 
 export function Markdown({ markdown, flashcards, onOpenFile, onOpenFiles, onOpenLesson }: Props) {
+  // Jaunākās callback funkcijas glabājam ref'ā. Tā `components` objekts paliek TAS PATS starp
+  // pārzīmēšanām — citādi React katru reizi izdzēstu un no jauna izveidotu koda blokus, tabulas
+  // un kartītes (pazustu scroll pozīcija, atvērtās kartītes aizvērtos).
+  const handlers = useRef({ onOpenFile, onOpenFiles, onOpenLesson })
+  handlers.current = { onOpenFile, onOpenFiles, onOpenLesson }
+
+  const components = useMemo<Components>(
+    () => ({
+      pre: ({ node }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const codeEl = node?.children?.[0] as any
+        const cls: string[] = codeEl?.properties?.className ?? []
+        const lang = cls.find((c) => String(c).startsWith('language-'))?.slice(9)
+        return <CodeBlock code={hastText(codeEl)} lang={lang} />
+      },
+      a: ({ href = '', children }) => {
+        const target = classifyLink(href)
+        if (target.kind === 'external') {
+          return (
+            <a href={href} target="_blank" rel="noreferrer">
+              {children}
+            </a>
+          )
+        }
+        const onClick = (e: React.MouseEvent) => {
+          e.preventDefault()
+          if (target.kind === 'file') handlers.current.onOpenFile(target.path)
+          if (target.kind === 'dir') handlers.current.onOpenFiles(target.files)
+          if (target.kind === 'lesson') handlers.current.onOpenLesson(target.lessonId)
+        }
+        const cls = target.kind === 'lesson' ? 'lesson-link' : 'file-link'
+        return (
+          <a href="#" className={cls} onClick={onClick}>
+            {target.kind !== 'lesson' && <span className="file-link-icon">{target.kind === 'dir' ? '/' : '{ }'}</span>}
+            {children}
+          </a>
+        )
+      },
+      blockquote: ({ children }) => (flashcards ? <Flashcard>{children}</Flashcard> : <blockquote>{children}</blockquote>),
+      table: ({ children }) => (
+        <div className="table-wrap">
+          <table>{children}</table>
+        </div>
+      ),
+    }),
+    [flashcards],
+  )
+
+  const text = useMemo(() => tidy(markdown), [markdown])
+
   return (
     <div className="markdown">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          pre: ({ node }) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const codeEl = node?.children?.[0] as any
-            const cls: string[] = codeEl?.properties?.className ?? []
-            const lang = cls.find((c) => String(c).startsWith('language-'))?.slice(9)
-            return <CodeBlock code={hastText(codeEl)} lang={lang} />
-          },
-          a: ({ href = '', children }) => {
-            const target = classifyLink(href)
-            if (target.kind === 'external') {
-              return (
-                <a href={href} target="_blank" rel="noreferrer">
-                  {children}
-                </a>
-              )
-            }
-            const onClick = (e: React.MouseEvent) => {
-              e.preventDefault()
-              if (target.kind === 'file') onOpenFile(target.path)
-              if (target.kind === 'dir') onOpenFiles(target.files)
-              if (target.kind === 'lesson') onOpenLesson(target.lessonId)
-            }
-            const cls = target.kind === 'lesson' ? 'lesson-link' : 'file-link'
-            return (
-              <a href="#" className={cls} onClick={onClick}>
-                {target.kind !== 'lesson' && <span className="file-link-icon">{target.kind === 'dir' ? '/' : '{ }'}</span>}
-                {children}
-              </a>
-            )
-          },
-          blockquote: ({ children }) =>
-            flashcards ? <Flashcard>{children}</Flashcard> : <blockquote>{children}</blockquote>,
-          table: ({ children }) => (
-            <div className="table-wrap">
-              <table>{children}</table>
-            </div>
-          ),
-        }}
-      >
-        {tidy(markdown)}
+      <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={components}>
+        {text}
       </ReactMarkdown>
     </div>
   )
